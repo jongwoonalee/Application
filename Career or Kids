@@ -1,0 +1,145 @@
+##Birth-Career Decision Self-Assessment App (React + Tailwind + Zustand)
+
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { motion } from 'framer-motion';
+
+const QUESTION_CATEGORIES = [
+  {
+    id: 'emotion',
+    title: 'Emotional Readiness',
+    questions: [
+      'I feel overwhelmed or emotional when thinking about having a child.',
+      'Seeing others with children makes me wish for that experience.',
+      'Stories of pregnancy or childbirth make me feel envious or moved.',
+      'I have a strong desire to pass on my own genes.',
+      'Imagining life without a child feels empty or sad.'
+    ]
+  },
+  {
+    id: 'capacity',
+    title: 'Practical Capacity',
+    questions: [
+      'I have the physical stamina and recovery time needed for childbirth.',
+      'I feel prepared to raise a child even without a partner.',
+      'I am financially close to supporting one child independently.',
+      'I have emotional or physical support from others to help with childcare.',
+      'I can manage emotional fluctuations without affecting the child.'
+    ]
+  },
+  {
+    id: 'career',
+    title: 'Career Priority',
+    questions: [
+      'Career interruption or delay makes me feel anxious.',
+      'Limiting research or travel due to parenting would be intolerable.',
+      'I realize my identity through my career.',
+      'I want to grow beyond my current position.',
+      'I prioritize having an impact on the world over raising a child.'
+    ]
+  },
+  {
+    id: 'internal',
+    title: 'Internalized Values',
+    questions: [
+      'I grew up hearing that life without children is incomplete.',
+      'My parents’ views on parenting/marriage influence my choices.',
+      'I often feel I will regret not having a child.',
+      'Having a child would give more meaning to my life.',
+      'I fear I will miss the opportunity forever if I wait.'
+    ]
+  }
+];
+
+const PROFILE_ADVICE = {
+  '⚠️ Conflict': {
+    title: 'Conflict Profile',
+    description: 'You strongly desire a child emotionally, but your career priorities create significant tension. Consider preserving fertility now (egg or embryo freezing) while you work through emotional and career alignment. Delaying action could increase regret or complexity later.'
+  },
+  '🎯 Capacity': {
+    title: 'Capacity Profile',
+    description: 'You are emotionally and practically ready to pursue motherhood. Your circumstances suggest you could begin planning seriously—perhaps considering egg freezing, partnership, or pregnancy timing without needing to delay for career.'
+  },
+  '🧱 Internalized': {
+    title: 'Internalized Profile',
+    description: 'Your desire for children may stem from social/family pressure more than personal conviction. Clarify what you truly want by separating your voice from cultural expectations. Counseling or journaling may help clarify.'
+  },
+  '🌀 Neutral': {
+    title: 'Neutral Profile',
+    description: 'You appear to be in a balanced but uncertain space. Fertility preservation is optional. Consider observing changes in your values, relationships, and career stability over the next 6–12 months.'
+  }
+};
+
+export default function App() {
+  const [scores, setScores] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSlider = (categoryId, index, value) => {
+    const key = `${categoryId}_${index}`;
+    setScores(prev => ({ ...prev, [key]: value[0] }));
+  };
+
+  const getSubtotals = () => {
+    return QUESTION_CATEGORIES.map(({ id }) => {
+      const keys = Object.keys(scores).filter(k => k.startsWith(id));
+      const subtotal = keys.reduce((sum, k) => sum + (scores[k] || 0), 0);
+      return { id, subtotal };
+    });
+  };
+
+  const analyzeProfile = () => {
+    const subtotals = getSubtotals();
+    const obj = Object.fromEntries(subtotals.map(s => [s.id, s.subtotal]));
+    const gap_ec = Math.abs(obj.emotion - obj.career);
+    const gap_ev = Math.abs(obj.emotion - obj.internal);
+
+    if (gap_ec >= 8) return '⚠️ Conflict';
+    if (Math.abs(obj.emotion - obj.capacity) <= 3 && obj.capacity >= obj.career) return '🎯 Capacity';
+    if (obj.emotion < obj.internal && obj.internal > obj.career) return '🧱 Internalized';
+    return '🌀 Neutral';
+  };
+
+  const profileKey = submitted ? analyzeProfile() : null;
+  const advice = profileKey ? PROFILE_ADVICE[profileKey] : null;
+
+  return (
+    <div className="max-w-3xl mx-auto p-6 space-y-8">
+      <h1 className="text-2xl font-bold text-center">Fertility & Career Self Assessment</h1>
+      {QUESTION_CATEGORIES.map((cat) => (
+        <Card key={cat.id} className="p-4">
+          <h2 className="font-semibold mb-2">{cat.title}</h2>
+          {cat.questions.map((q, i) => (
+            <div key={i} className="mb-4">
+              <p className="mb-1 text-sm">{q}</p>
+              <Slider
+                min={0}
+                max={5}
+                step={1}
+                defaultValue={[scores[`${cat.id}_${i}`] || 0]}
+                onValueChange={(val) => handleSlider(cat.id, i, val)}
+              />
+            </div>
+          ))}
+        </Card>
+      ))}
+
+      <div className="text-center">
+        <Button onClick={() => setSubmitted(true)}>Submit & View Profile</Button>
+      </div>
+
+      {submitted && advice && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center p-6 border rounded-lg shadow bg-white"
+        >
+          <p className="text-lg font-semibold">Your Profile:</p>
+          <p className="text-2xl mt-2">{advice.title}</p>
+          <p className="mt-4 text-sm text-gray-700 whitespace-pre-line">{advice.description}</p>
+        </motion.div>
+      )}
+    </div>
+  );
+}
